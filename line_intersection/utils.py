@@ -1,18 +1,19 @@
 from itertools import chain
 from enum import Enum, auto
 
+
 def points(lines: list) -> list:
     """
     Return the points from the list of lines
     """
-    return list(set(chain.from_iterable(
-        [[line.lower,line.upper] for line in lines])))
+    return list(
+        set(chain.from_iterable([[line.lower, line.upper] for line in lines])))
+
 
 class _Algorithm:
     """
     Line Intersection algorithm representation
     """
-
     def __init__(self, lines: list):
         """
         :param: _lines
@@ -39,13 +40,11 @@ class _Algorithm:
         """
         # Print Lines
         print("Lines:")
-        print("\n".join(
-            map(str, self._lines)))
+        print("\n".join(map(str, self._lines)))
         # Print intersection points but filter empty points out
         print("Intersection Points:")
-        print("\n".join(
-            map(str, filter(
-                lambda x: not x, self._int_points))))
+        print("\n".join(map(str, filter(lambda x: not x, self._int_points))))
+
 
 class Colour(Enum):
     """
@@ -53,14 +52,23 @@ class Colour(Enum):
     """
     RED = auto()
     BLACK = auto()
+    NONE = auto()
+
+
+class Direction(Enum):
+    """
+    Direction in search tree
+    """
+    LEFT = auto()
+    RIGHT = auto()
+
 
 class Node:
     """
     Binary Search Tree node for Points or Line Segments
     I use the red-black tree strategy for balancing out the binary tree
     """
-
-    def __init__(self, value):
+    def __init__(self, value, colour, parent, left=None, right=None):
         """
         :param: value - Point or LineSegment
         :param: parent
@@ -69,14 +77,28 @@ class Node:
         :param: colour - Colour for Red Black Tree
         """
         self.value = value
-        self.parent = None
-        self.left_child = None
-        self.right_child = None
-        self.colour = Colour.RED
+        self.parent = parent
+        self.left_child = left
+        self.right_child = right
+        self.colour = colour
+
+    def num_children(self) -> int:
+        """
+        Number of child the node has
+        """
+        if self.value is None:
+            return 0
+        return bool(self.left_child) + bool(self.right_child)
+
+    def has_children(self) -> bool:
+        """
+        True if the node has children
+        """
+        return bool(self.num_children())
 
     def __bool__(self) -> bool:
         """
-        Overrides the boolean representation
+        Overrides default boolean representation
         """
         return bool(self.value)
 
@@ -94,266 +116,383 @@ class Node:
         """
         return str(self.value)
 
+
 class BST:
     """
     Self-Balancing Red Black Tree for storing the status and event lists
+    Adapted from:
+    https://github.com/stanislavkozlovski/Red-Black-Tree/blob/master/rb_tree.py
     """
+    LEAF = Node(None, Colour.NONE, None)
 
     def __init__(self):
         """
         :param: root - root of the BST
         """
         self.root = None
+        self.rotations = {
+            Direction.LEFT: self._left_rotate,
+            Direction.RIGHT: self._right_rotate
+        }
 
     def insert(self, value) -> None:
         """
         Insert a value into the BST
         """
-        node = Node(value)
-        parent = None
-        current = self.root
+        if not self.root:
+            self.root = Node(value,
+                             Colour.BLACK,
+                             parent=None,
+                             left=self.LEAF,
+                             right=self.LEAF)
+            return
 
-        # Search for location to insert node
-        while current is not None:
-            parent = current
-            if node.value < current.value:
-                current = current.left_child
-            else:
-                current = current.right_child
+        # Find insert location
+        insert_loc, direction = self.find_insertion(self.root, value)
+        if direction is None:
+            raise Exception("{} already exists in the tree!".format(str(value)))
 
-        # Add in node
-        node.parent = parent
-        if parent is None:
-            self.root = node
-        elif node.value < parent.value:
-            parent.left_child = node
+        node = Node(value,
+                    Colour.RED,
+                    insert_loc,
+                    left=self.LEAF,
+                    right=self.LEAF)
+        if direction == Direction.LEFT:
+            insert_loc.left_child = node
         else:
-            parent.right_child = node
+            insert_loc.right_child = node
 
-        # Balance the tree post insertion
-        if node.parent is None:
-            node.colour = Colour.BLACK
-            return
+        self._balance(node)
 
-        if node.parent.parent is None:
-            return
+    def find_insertion(self, node, value):
+        """
+        Find location to insert :param: value in tree rooted at :param: node
+        """
+        if value == node.value:
+            return None, None
+        elif node.value < value:
+            if node.right_child.colour == Colour.NONE:
+                return node, Direction.RIGHT
+            return self.find_insertion(node.right_child, value)
+        if node.left_child.colour == Colour.NONE:
+            return node, Direction.LEFT
+        return self.find_insertion(node.left_child, value)
 
-        self.insert_balance(node)
-        return
-
-    def insert_balance(self, node) -> None:
+    def _balance(self, node) -> None:
         """
         Balance the tree after :param: node has been inserted
         """
-        if node is None or node.parent is None:
+        parent = node.parent
+        value = node.value
+
+        # Check if tree is already balanced
+        if parent is None or parent.parent is None or \
+           (node.colour != Colour.RED or parent.colour != Colour.RED):
             return
-        elif node.parent.colour == Colour.RED:
-            # Find uncle
-            if node.parent == node.parent.parent.right_child:
-                which_uncle = "L"
-                uncle = node.parent.parent.left_child
-            else:
-                uncle = node.parent.parent.right_child
-                which_uncle = "R"
-            # Recolour vertices or rotate based on colour of uncle
-            node.parent.colour = Colour.BLACK
-            node.parent.parent.colour = Colour.RED
-            if uncle is not None and uncle.colour == Colour.RED:
-                uncle.colour = Colour.BLACK
-            else:
-                if which_uncle == "L":
-                    print(node == node.parent)
-                    if node == node.parent.left_child:
-                        node = node.parent
-                        self.right_rotate(node)
-                    self.left_rotate(node.parent.parent)
-                else:
-                    if node == node.parent.right_child:
-                        node = node.parent
-                        self.left_rotate(node)
-                    self.right_rotate(node.parent.parent)
 
-            # Recursively balance grandparent
-            if node != self.root:
-                self.insert_balance(node.parent.parent)
+        # Compute direction for rotation
+        grandparent = parent.parent
+        node_dir = Direction.LEFT if parent.value > value \
+            else Direction.RIGHT
+        parent_dir = Direction.LEFT if grandparent.value > parent.value \
+            else Direction.RIGHT
+        uncle = grandparent.right_child if parent_dir == Direction.LEFT \
+            else grandparent.left_child
+        directions = (node_dir, parent_dir)
 
-        # Colour the root black and finish
-        self.root.colour = Colour.BLACK
+        # Perform appropriate rotations
+        if uncle == self.LEAF or uncle.colour == Colour.BLACK:
+            if directions == (Direction.LEFT, Direction.LEFT):
+                self._right_rotate(node, parent, grandparent, recolour=True)
+            elif directions == (Direction.LEFT, Direction.RIGHT):
+                self._right_rotate(None, node, parent)
+                self._left_rotate(parent, node, grandparent, recolour=True)
+            elif directions == (Direction.RIGHT, Direction.LEFT):
+                self._left_rotate(None, node, parent)
+                self._right_rotate(parent, node, grandparent, recolour=True)
+            elif directions == (Direction.RIGHT, Direction.RIGHT):
+                self._left_rotate(node, parent, grandparent, recolour=True)
+            else:
+                return
+        # Recolour from the grandparent
+        else:
+            self._recolour(grandparent)
         return
 
-    def _replace(self, x: Node, y: Node) -> None:
+    def _update_parent(self, node, parent_old_child, new_parent):
         """
-        Replace :param: x with :param: y in the tree
+        Update the parent of :param: node with :param: new_parent
         """
-        if x.parent is None:
-            self.root = y
-        elif x == x.parent.left_child:
-            x.parent.left_child = y
+        node.parent = new_parent
+        if new_parent:
+            if new_parent.value > parent_old_child.value:
+                new_parent.left_child = node
+            else:
+                new_parent.right_child = node
         else:
-            x.parent.right_child = y
-        if y is not None:
-            y.parent = x.parent
+            self.root = node
+        return
 
-    def minimum(self, node):
+    def _left_rotate(self, node, parent, grandparent, recolour=False):
         """
-        Find minimmum node in tree rooted at :param: node
+        Rotate left about :param: node with parent :param: parent,
+        grandparent :param: grandparent.
+        :param: recolour (False)
         """
-        while node.left_child is not None:
-            node = node.left_child
-        return node
+        grand_grandparent = grandparent.parent
+        self._update_parent(parent, grandparent, grand_grandparent)
+        old_left = parent.left_child
+        parent.left_child = grandparent
+        grandparent.parent = parent
+
+        grandparent.right_child = old_left
+        old_left.parent = grandparent
+
+        if recolour:
+            parent.colour = Colour.BLACK
+            node.colour = Colour.RED
+            grandparent.colour = Colour.RED
+
+        return
+
+    def _right_rotate(self, node, parent, grandparent, recolour=False):
+        """
+        Rotate right about :param: node with parent :param: parent,
+        grandparent :param: grandparent.
+        :param: recolour (False)
+        """
+        grand_grandparent = grandparent.parent
+        self._update_parent(parent, grandparent, grand_grandparent)
+        old_right = parent.right_child
+        parent.right_child = grandparent
+        grandparent.parent = parent
+
+        grandparent.left_child = old_right
+        old_right.parent = grandparent
+
+        if recolour:
+            parent.colour = Colour.BLACK
+            node.colour = Colour.RED
+            grandparent.colour = Colour.RED
+
+        return
+
+    def _recolour(self, node):
+        """
+        Recolour :param: node
+        """
+        node.right_child.colour = Colour.BLACK
+        node.left_child.colour = Colour.BLACK
+        if node != self.root:
+            node.colour = Colour.RED
+        self._balance(node)
+        return
 
     def delete(self, value) -> None:
         """
         Delete node with :param: value in the tree
         """
-        return self.delete_at_node(self.root, value)
+        node = self.search(self.root, value)
+        if node is None:
+            raise Exception("{} is not in the tree".format(str(value)))
 
-    def delete_at_node(self, node, value) -> None:
-        """
-        Delete node with :param: value in the tree rooted at :param: node
-        """
-        match = None
-        # Search for the value
-        while node is not None:
-            if node.value == value:
-                match = node
+        if node.num_children() == 2:
+            minimum = self._inorder_successor(node)
+            node.value = minimum.value
+            node = minimum
 
-            if node.value <= value:
-                node = node.right_child
+        self._delete_at_node(node)
+
+    def _inorder_successor(self, node):
+        """
+        Get the inorder successor of :param: node
+        """
+        right_node = node.right_child
+        left_node = right_node.left_child
+        if left_node == self.LEAF:
+            return right_node
+        while left_node != self.LEAF:
+            left_node = left_node.left_child
+        return left_node
+
+    def _delete_at_node(self, node) -> None:
+        """
+        Delete :param: node. This node always must have < 2 children
+        """
+        left_child = node.left_child
+        right_child = node.right_child
+        not_nil_child = left_child if left_child != self.LEAF else right_child
+
+        if node == self.root:
+            if not_nil_child != self.LEAF:
+                self.root = not_nil_child
+                self.root.parent = None
+                self.root.colour = Colour.BLACK
             else:
-                node = node.left_child
-
-        if match is None:
-            print("No match found for {}".format(str(value)))
-            return
-
-        # Recolour and replace nodes as required
-        deleted = match
-        colour = deleted.colour
-        if match.left_child is None:
-            rot = match.right_child
-            self._replace(match, match.right_child)
-        elif match.right_child is None:
-            rot = match.left_child
-            self._replace(match, match.left_child)
+                self.root = None
+        elif node.colour == Colour.RED:
+            if not node.has_children():
+                self._remove_leaf(node)
+            else:
+                raise Exception("Unexpected behaviour!")
         else:
-            deleted = self.minimum(match.right_child)
-            colour = deleted.colour
-            rot = deleted.right_child
-            if deleted.parent == match:
-                rot.parent = deleted
+            if right_child.has_children() or left_child.has_children():
+                raise Exception("Invalid black height!")
+            if not_nil_child.colour == Colour.RED:
+                # Unlink red child
+                node.value = not_nil_child.value
+                node.left_child = not_nil_child.left_child
+                node.right_child = not_nil_child.right_child
+            elif not_nil_child.colour == Colour.BLACK:
+                self._remove_black_node(node)
             else:
-                self._replace(deleted, deleted.right_child)
-                deleted.right_child = match.right_child
-                deleted.right_child.parent = deleted
-
-            self._replace(match, deleted)
-            deleted.left_child = match.left_child
-            deleted.left_child.parent = deleted
-            deleted.colour = match.colour
-
-        # Balance tree if original node was black
-        if colour == Colour.BLACK:
-            self.delete_balance(rot)
-
-    def delete_balance(self, node):
-        """
-        Balance tree at :param: node after deletion
-        """
-        if node != self.root and node.colour == Colour.BLACK:
-            # Find Sibling
-            if node == node.parent.left_child:
-                which_child = "L"
-                sibling = node.parent.right_child
-            else:
-                which_child = "R"
-                sibling = node.parent.left_child
-
-            # Rotate and recolour
-            if sibling.colour == Colour.RED:
-                sibling.colour = Colour.BLACK
-                node.parent.colour = Colour.RED
-                if which_child == "L":
-                    self.left_rotate(node.parent)
-                    sibling = node.parent.right_child
-                else:
-                    self.right_rotate(node.parent)
-                    sibling = node.parent.left_child
-
-            # Check colours of siblings and recursively balance
-            if sibling.left_child.colour == Colour.BLACK and \
-               sibling.right_child.colour == Colour.BLACK:
-                sibling.colour = Colour.RED
-                self.delete_balance(node.parent)
-            else:
-                if which_child == "L" and \
-                   sibling.right_child.colour == Colour.BLACK:
-                    sibling.left_child.colour == Colour.BLACK
-                    sibling.Colour = Colour.RED
-                    self.right_rotate(sibling)
-                    # Switch Sibling
-                    sibling = node.parent.right_child
-                elif which_child == "R" and \
-                     sibling.left_child.colour == Colour.BLACK:
-                    sibling.right_child.colour = Colour.BLACK
-                    sibling.Colour = Colour.RED
-                    self.left_rotate(sibling)
-                    # Switch Sibling
-                    sibling = node.parent.left_child
-
-                sibling.colour = node.parent.colour
-                node.parent.colour = Colour.BLACK
-                if which_child == "L":
-                    sibling.right_child.colour = Colour.BLACK
-                    self.left_rotate(node.parent)
-                else:
-                    sibling.left_child.colour = Colour.BLACK
-                    self.right_rotate(node.parent)
-                self.delete_balance(self.root)
-
-        # Colour root black and finish
-        node.colour = Colour.BLACK
+                self._remove_leaf(node)
         return
 
-    def left_rotate(self, node):
+    def _remove_leaf(self, node):
         """
-        Rotate left about :param: node
+        Delete leaf node :param: node
         """
-        temp = node.right_child
-        node.right_child = temp.left_child
-        if temp.left_child is not None:
-            temp.left_child.parent = node
-
-        temp.parent = node.parent
-        if node.parent is None:
-            self.root = temp
-        elif node == node.parent.left_child:
-            node.parent.left_child = temp
+        if node.value >= node.parent.value:
+            node.parent.right_child = self.LEAF
         else:
-            node.parent.right_child = temp
+            node.parent.left_child = self.LEAF
+        return
 
-        temp.left_child = node
-        node.parent = temp
-
-    def right_rotate(self, node):
+    def _remove_black_node(self, node):
         """
-        Rotate right about :param: node
+        Remove black node :param: node
         """
-        temp = node.left_child
-        node.left_child = temp.right_child
-        if temp.right_child is not None:
-            temp.right_child.parent = node
+        self.__case_1(node)
+        self._remove_leaf(node)
 
-        temp.parent = node.parent
-        if node.parent is None:
-            self.root = temp
-        elif node == node.parent.right_child:
-            node.parent.right_child = temp
+    def __case_1(self, node):
+        """
+        Case 1 is when there's a double black node on the root
+        """
+        if self.root == node:
+            node.colour = Colour.BLACK
+            return
+        self.__case_2(node)
+
+    def __case_2(self, node):
+        """
+        Case 2 applies when
+            the parent is BLACK
+            the sibling is RED
+            the sibling's children are BLACK or NIL
+        """
+        parent = node.parent
+        sibling, direction = self._get_sibling(node)
+
+        if sibling.colour == Colour.RED and \
+           parent.colour == Colour.BLACK and \
+           sibling.left_child.colour != Colour.RED and \
+               sibling.right_child.colour != Colour.RED:
+            self.rotations[direction](None, sibling, parent)
+            parent.colour = Colour.RED
+            sibling.colour = Colour.BLACK
+            return self.__case_1(node)
+        self.__case_3(node)
+
+    def __case_3(self, node):
+        """
+        Case 3 deletion is when:
+            the parent is BLACK
+            the sibling is BLACK
+            the sibling's children are BLACK
+        """
+        parent = node.parent
+        sibling, _ = self._get_sibling(node)
+        if sibling.colour == Colour.BLACK and \
+           parent.colour == Colour.BLACK and \
+           sibling.left_child.colour != Colour.RED and \
+               sibling.right_child.colour != Colour.RED:
+            sibling.colour = Colour.RED
+            return self.__case_1(parent)
+
+        self.__case_4(node)
+
+    def __case_4(self, node):
+        """
+        If the parent is red and the sibling is black with no red children,
+        simply swap their colours
+        """
+        parent = node.parent
+        if parent.colour == Colour.RED:
+            sibling, direction = self._get_sibling(node)
+            if sibling.colour == Colour.BLACK and \
+               sibling.left_child.colour != Colour.RED and \
+                   sibling.right_child.colour != Colour.RED:
+                parent.colour, sibling.colour = sibling.colour, parent.colour
+                return
+        self.__case_5(node)
+
+    def __case_5(self, node):
+        """
+        Case 5 is a rotation that changes the circumstances so that we can do a case 6
+        """
+        sibling, direction = self._get_sibling(node)
+        closer_node = sibling.right_child if direction == Direction.LEFT \
+            else sibling.left_child
+        outer_node = sibling.left_child if direction == Direction.LEFT \
+            else sibling.right_child
+        if closer_node.colour == Colour.RED and \
+           outer_node.colour != Colour.RED and \
+               sibling.colour == Colour.BLACK:
+            self.rotations[direction](None, closer_node, sibling)
+            closer_node.colour = Colour.BLACK
+            sibling.colour = Colour.RED
+
+        self.__case_6(node)
+
+    def __case_6(self, node):
+        """
+        Case 6 requires
+            SIBLING to be BLACK
+            OUTER NODE to be RED
+        """
+        sibling, direction = self._get_sibling(node)
+        outer_node = sibling.left_child if direction == Direction.LEFT \
+            else sibling.right_child
+
+        if sibling.colour == Colour.BLACK and \
+           outer_node.colour == Colour.RED:
+            parent_colour = sibling.parent.colour
+            self.rotations[direction](None, sibling, sibling.parent)
+            # new parent is sibling
+            sibling.colour = parent_colour
+            sibling.right_child.colour = Colour.BLACK
+            sibling.left_child.colour = Colour.BLACK
+            return
+
+        raise Exception('We should have ended here, something is wrong')
+
+    def _get_sibling(self, node):
+        """
+        Returns the sibling of :param: node and the side it is on
+        """
+        parent = node.parent
+        if node.value >= parent.value:
+            sibling = parent.left_child
+            direction = Direction.LEFT
         else:
-            node.parent.left_child = temp
+            sibling = parent.right_child
+            direction = Direction.RIGHT
+        return sibling, direction
 
-        temp.right_child = node
-        node.parent = temp
+    def search(self, node, value):
+        """
+        Search for node with :param: value in tree rooted at :param: node
+        """
+        if node is None or node == self.LEAF:
+            return None
+
+        if value > node.value:
+            return self.search(node.right_child, value)
+        elif value < node.value:
+            return self.search(node.left_child, value)
+        return node
 
     def _print_helper(self, node: Node, indent: str, loc: int):
         """
@@ -361,7 +500,7 @@ class BST:
         :param: indent
         :param: loc (int) (1 -> root, 2 -> left, 3 -> right)
         """
-        if node is not None:
+        if bool(node):
             print(indent, end="")
             if loc == 1:
                 print("root: ", end="")
@@ -372,7 +511,7 @@ class BST:
             else:
                 print("R----", end="")
                 indent += "\t"
-            print(node, node.colour)
+            print(node)
             self._print_helper(node.left_child, indent, 3)
             self._print_helper(node.right_child, indent, 2)
 
@@ -382,14 +521,28 @@ class BST:
         """
         self._print_helper(self.root, "", 1)
 
+
 if __name__ == "__main__":
+    # import random
+    # for _ in range(300):
+    #     bst = BST()
+    #     values = []
+    #     for _ in range(20):
+    #         v = random.randint(0, 50)
+    #         values.append(v)
+    #         print("Inserting", v)
+    #         bst.insert(v)
+    #     bst.print()
+    #     for _ in range(10):
+    #         i = random.randint(0, 19)
+    #         print("Deleting", values[i])
+    #         bst.delete(values[i])
+    #     bst.print()
     bst = BST()
     bst.insert(10)
-    bst.insert(12)
-    bst.insert(13)
-    # bst.insert(7)
-    # bst.insert(6)
-    # bst.insert(11)
-    # bst.print()
-    # bst.delete(7)
+    bst.insert(9)
+    bst.insert(8)
+    bst.insert(7)
+    bst.print()
+    bst.delete(7)
     bst.print()
