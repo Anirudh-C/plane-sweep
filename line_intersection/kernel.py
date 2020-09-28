@@ -3,7 +3,7 @@ from enum import Enum, auto
 
 import numpy as np
 
-from line_intersection.utils import points, _Algorithm, BST
+from line_intersection.utils import points, _Algorithm, Node
 
 
 class Intersection(Enum):
@@ -14,6 +14,14 @@ class Intersection(Enum):
     END_POINT = auto()
     NORMAL = auto()
 
+
+class EventType(Enum):
+    """
+    Representation for type of event
+    """
+    LOWER = auto()
+    UPPER = auto()
+    INTERSECTION = auto()
 
 class Point:
     """
@@ -98,6 +106,8 @@ class LineSegment:
         """
         :param: lower
         :param: upper
+        :param: eqn (slope, intercept)
+        :param: event_type
         """
         if p1.y < p2.y:
             self.lower = p1
@@ -113,34 +123,29 @@ class LineSegment:
                 self.lower = p2
                 self.upper = p1
         self.eqn = self._prep_eqn()
+        self.event_type = EventType.UPPER
 
     def __eq__(self, other) -> bool:
         """
         Overrides default equal to
         """
         if isinstance(other, LineSegment):
-            return self.lower == other.lower and self.upper == other.upper
+            return self.eqn == other.eqn
         return False
 
     def __bool__(self) -> bool:
         """
         Overrides default boolean representation
         """
-        return self.lower == self.upper
+        return self.lower is None or self.upper is None
 
     def __lt__(self, other) -> bool:
         """
         Overrides default lesser than for status list
         """
-        if self.lower.x < other.lower.x:
-            return True
-        elif self.lower.x > other.lower.x:
-            return False
-        else:
-            if self.upper.x < other.upper.x:
-                return True
-            else:
-                return False
+        if self.event_type == EventType.UPPER:
+            return self.upper.x < other.upper.x
+        return self.lower.x < other.lower.x
 
     def __le__(self, other) -> bool:
         """
@@ -247,19 +252,148 @@ class BruteForce(_Algorithm):
         self._int_points = list(int_points)
         return self._int_points
 
+class Status:
+    """
+    Binary Search tree for status list
+    """
+    def __init__(self):
+        """
+        :param: root - root of the BST
+        """
+        self.root = None
+
+    def insert(self, value) -> None:
+        """
+        Insert a value into the BST
+        """
+        if self.root is None:
+            self.root = Node(value)
+            return
+
+        parent, direction = self.find_insertion(self.root, value)
+        if parent is None:
+            print("{} is already in the status!".format(str(value)))
+            return
+        if direction is 'L':
+            parent.left_child = Node(value)
+            return
+        parent.right_child = Node(value)
+        return
+
+    def find_insertion(self, node, value):
+        """
+        Find location to insert :param: value in tree rooted at :param: node
+        """
+        if value == node.value:
+            return None, None
+        elif value < node.value:
+            if node.left_child is None:
+                return node, 'L'
+            return self.find_insertion(node.left_child, value)
+        if node.right_child is None:
+            return node, 'R'
+        return self.find_insertion(node.right_child, value)
+
+    def delete(self, value) -> None:
+        """
+        Delete node with :param: value in the tree
+        """
+        self.root = self._delete_at_node(self.root, value)
+        return
+
+    def _delete_at_node(self, node, value) -> None:
+        """
+        Delete :param: from tree rooted at :param: node.
+        """
+        if node is None:
+            return node
+
+        if value < node.value:
+            node.left_child = self._delete_at_node(node.left_child, value)
+        elif value > node.value:
+            node.right_child = self._delete_at_node(node.right_child, value)
+        else:
+            if node.left_child is None:
+                return node.right_child
+            elif node.right_child is None:
+                return node.left_child
+
+            minimum = self._inorder_successor(node)
+            node.value = minimum.value
+            node.right_child = self._delete_at_node(node.right_child, minimum.value)
+        return node
+
+    def _inorder_successor(self, node):
+        """
+        Get the inorder successor of :param: node
+        """
+        right_node = node.right_child
+        left_node = right_node.left_child
+        if left_node is None:
+            return right_node
+        while left_node is not None:
+            left_node = left_node.left_child
+        return left_node
+
+    def search(self, value):
+        """
+        Search for node with :param: value
+        """
+        return self._search_helper(self.root, value)
+
+    def _search_helper(self, node, value):
+        """
+        Search for node with :param: value in tree rooted at :param: node
+        """
+        if node is None:
+            return None
+
+        if value > node.value:
+            return self._search_helper(node.right_child, value)
+        elif value < node.value:
+            return self._search_helper(node.left_child, value)
+        return node
+
+    def _print_helper(self, node: Node, indent: str, loc: int):
+        """
+        Recursive function to print subtree rooted at :param: node
+        :param: indent
+        :param: loc (int) (1 -> root, 2 -> left, 3 -> right)
+        """
+        if node is not None:
+            print(indent, end="")
+            if loc == 1:
+                print("root: ", end="")
+                indent += "\t"
+            elif loc == 3:
+                print("L----", end="")
+                indent += "|\t"
+            else:
+                print("R----", end="")
+                indent += "\t"
+            print(node)
+            self._print_helper(node.left_child, indent, 3)
+            self._print_helper(node.right_child, indent, 2)
+
+    def print(self):
+        """
+        Print BST
+        """
+        self._print_helper(self.root, "", 1)
+
 if __name__ == "__main__":
+    pts = [Point(1,2), Point(3,7), Point(2,4)]
+    print(sorted(pts))
     l1 = LineSegment(Point(3, 7), Point(2, 1))
     l2 = LineSegment(Point(2, 2), Point(5, 5))
     l3 = LineSegment(Point(3, 2), Point(4, 6))
-    l4 = LineSegment(Point(3, 7), Point(2,2))
+    l4 = LineSegment(Point(3, 7), Point(2, 2))
     l5 = LineSegment(Point(1, 0), Point(2, 1))
-    brute = BruteForce([l1,l2,l3,l4,l5])
-    brute.run()
-    brute.print()
-    bst = BST()
-    bst.insert(l1)
-    bst.insert(l2)
-    bst.insert(l3)
-    bst.print()
-    bst.delete(l2)
-    bst.print()
+    status = Status()
+    status.insert(l1)
+    status.insert(l2)
+    status.insert(l3)
+    status.insert(l4)
+    status.insert(l5)
+    status.delete(l2)
+    status.print()
