@@ -1,6 +1,4 @@
 from itertools import chain
-from enum import Enum, auto
-
 
 def points(lines: list) -> list:
     """

@@ -15,14 +15,6 @@ class Intersection(Enum):
     NORMAL = auto()
 
 
-class EventType(Enum):
-    """
-    Representation for type of event
-    """
-    LOWER = auto()
-    UPPER = auto()
-    INTERSECTION = auto()
-
 class Point:
     """
     Representation for a point in the x-y plane
@@ -107,7 +99,6 @@ class LineSegment:
         :param: lower
         :param: upper
         :param: eqn (slope, intercept)
-        :param: event_type
         """
         if p1.y < p2.y:
             self.lower = p1
@@ -123,7 +114,6 @@ class LineSegment:
                 self.lower = p2
                 self.upper = p1
         self.eqn = self._prep_eqn()
-        self.event_type = EventType.UPPER
 
     def __eq__(self, other) -> bool:
         """
@@ -138,32 +128,6 @@ class LineSegment:
         Overrides default boolean representation
         """
         return self.lower is None or self.upper is None
-
-    def __lt__(self, other) -> bool:
-        """
-        Overrides default lesser than for status list
-        """
-        if self.event_type == EventType.UPPER:
-            return self.upper.x < other.upper.x
-        return self.lower.x < other.lower.x
-
-    def __le__(self, other) -> bool:
-        """
-        Overrides default lesser than or equal to for status list
-        """
-        return self < other or self == other
-
-    def __gt__(self, other) -> bool:
-        """
-        Overrides default greater than for status list
-        """
-        return other < self
-
-    def __ge__(self, other) -> bool:
-        """
-        Overrides default greater than or equal to for status list
-        """
-        return self > other or self == other
 
     def __hash__(self) -> int:
         """
@@ -229,8 +193,10 @@ class BruteForce(_Algorithm):
         """
         :param: _lines
         :param: _int_points
+        :param: _comparisons
         """
         super().__init__(lines)
+        self._comparisons = []
 
     def run(self) -> list:
         """
@@ -238,7 +204,6 @@ class BruteForce(_Algorithm):
         Keep track of each comparison and the point added to it.
         """
         int_points = set()
-        self._comparisons = []
         for i in range(len(self._lines)):
             for j in range(len(self._lines)):
                 if i != j:
@@ -252,11 +217,11 @@ class BruteForce(_Algorithm):
         self._int_points = list(int_points)
         return self._int_points
 
-class Status:
+class BST:
     """
-    Binary Search tree for status list
+    Binary Search tree for status list and event queue
     """
-    def __init__(self):
+    def __init__(self, line: int=0):
         """
         :param: root - root of the BST
         """
@@ -272,7 +237,7 @@ class Status:
 
         parent, direction = self.find_insertion(self.root, value)
         if parent is None:
-            print("{} is already in the status!".format(str(value)))
+            print("{} is already in the BST!".format(str(value)))
             return
         if direction is 'L':
             parent.left_child = Node(value)
@@ -389,7 +354,7 @@ if __name__ == "__main__":
     l3 = LineSegment(Point(3, 2), Point(4, 6))
     l4 = LineSegment(Point(3, 7), Point(2, 2))
     l5 = LineSegment(Point(1, 0), Point(2, 1))
-    status = Status()
+    status = BST()
     status.insert(l1)
     status.insert(l2)
     status.insert(l3)
