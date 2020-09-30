@@ -2,7 +2,7 @@
 ## Setup
 In a working `python3` environment (preferrably virtualenv) run the setup script
 ```sh
-$ ./setup.sh
+$ source setup.sh
 ```
 ## Testing and Running the program
 Create a text file with line segments, where each line segmnet is contained on a new line.
