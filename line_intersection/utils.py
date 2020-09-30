@@ -1,5 +1,6 @@
 from itertools import chain
 
+
 def points(lines: list) -> list:
     """
     Return the points from the list of lines
@@ -90,6 +91,7 @@ class Node:
         """
         return str(self)
 
+
 class BST:
     """
     AVL Tree implementation of a BST
@@ -142,7 +144,8 @@ class BST:
         else:
             return root
 
-        root.height = max(self._get_height(root.left), self._get_height(root.right)) + 1
+        root.height = max(self._get_height(root.left),
+                          self._get_height(root.right)) + 1
         root.balance = self._get_balance(root)
         return self.rebalance(root)
 
@@ -183,7 +186,8 @@ class BST:
         if not root:
             return root
 
-        root.height = 1 + max(self._get_height(root.left), self._get_height(root.right))
+        root.height = 1 + max(self._get_height(root.left),
+                              self._get_height(root.right))
         balance = self._get_balance(root)
 
         if balance > 1:
@@ -285,6 +289,15 @@ class BST:
             return pred.value, succ
         return pred.value, succ.value
 
+    def search(self, value):
+        """
+        Search for :param: value in tree
+        """
+        node = self._search(self.root, value)
+        if node:
+            return node.value
+        return None
+
     def _search(self, root, value) -> Node:
         """
         Search for node with value :param: value in tree rooted
@@ -321,7 +334,7 @@ class BST:
         """
         Perform right rotation on the tree rooted at :param: root
         """
-        pivot  = root.left
+        pivot = root.left
         tmp = pivot.right
 
         pivot.right = root
@@ -338,9 +351,11 @@ class BST:
             else:
                 pivot.parent.right = pivot
 
-        root.height = max(self._get_height(root.left), self._get_height(root.right)) + 1
+        root.height = max(self._get_height(root.left),
+                          self._get_height(root.right)) + 1
         root.balance = self._get_balance(root)
-        pivot.height = max(self._get_height(pivot.left), self._get_height(pivot.right)) + 1
+        pivot.height = max(self._get_height(pivot.left),
+                           self._get_height(pivot.right)) + 1
         pivot.balance = self._get_balance(pivot)
         return pivot
 
@@ -365,9 +380,11 @@ class BST:
             else:
                 pivot.parent.right = pivot
 
-        root.height = max(self._get_height(root.left), self._get_height(root.right)) + 1
+        root.height = max(self._get_height(root.left),
+                          self._get_height(root.right)) + 1
         root.balance = self._get_balance(root)
-        pivot.height = max(self._get_height(pivot.left), self._get_height(pivot.right)) + 1
+        pivot.height = max(self._get_height(pivot.left),
+                           self._get_height(pivot.right)) + 1
         pivot.balance = self._get_balance(pivot)
         return pivot
 
@@ -411,14 +428,6 @@ class BST:
         """
         self._print_helper(self.root, "", 1)
 
+
 if __name__ == "__main__":
-    bst = BST(lambda x,y: x-y)
-    bst.insert(1)
-    bst.insert(10)
-    bst.insert(14)
-    bst.insert(3)
-    bst.print()
-    bst.delete(3)
-    bst.insert(13)
-    print(bst.neighbours(14))
-    bst.print()
+    print("--Run main.py--")

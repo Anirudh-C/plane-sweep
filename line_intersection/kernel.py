@@ -19,9 +19,7 @@ class Point:
     """
     Representation for a point in the x-y plane
     """
-
-    def __init__(self, x: float, y: float,
-                 intersection: Intersection = None):
+    def __init__(self, x: float, y: float, intersection: Intersection = None):
         """
         :param: x
         :param: y
@@ -52,9 +50,7 @@ class Point:
         """
         Overrides string representation
         """
-        if self.intersection is not None:
-            return str((self.x, self.y, self.intersection))
-        return str((self.x,self.y))
+        return str((self.x, self.y))
 
     def __repr__(self) -> str:
         """
@@ -67,7 +63,6 @@ class LineSegment:
     """
     Representation for a line segment in the x-y plane
     """
-
     def __init__(self, p1: Point, p2: Point):
         """
         :param: lower
@@ -124,7 +119,7 @@ class LineSegment:
         """
         Check if :param: point is in line
         """
-        if point.y == self.eqn[0]*point.x + self.eqn[1]:
+        if point.y == self.eqn[0] * point.x + self.eqn[1]:
             return self.lower.x <= point.x <= self.upper.x
         return False
 
@@ -136,7 +131,7 @@ class LineSegment:
             return (np.inf, -self.lower.x)
         elif self.lower.y == self.upper.y:
             return (0, self.lower.y)
-        slope = (self.upper.y - self.lower.y)/(self.upper.x - self.lower.x)
+        slope = (self.upper.y - self.lower.y) / (self.upper.x - self.lower.x)
         intercept = (self.lower.y * self.upper.x - self.upper.y * self.lower.x)\
             / (self.upper.x - self.lower.x)
         return (slope, intercept)
@@ -154,7 +149,7 @@ class LineSegment:
             elif line.lower in self:
                 return Point(line.lower.x, line.lower.y, Intersection.OVERLAP)
         elif self.eqn[0] == line.eqn[0]:
-            return Point(None,None)
+            return Point(None, None)
 
         # Compute intersection point
         x = (self.eqn[1] - line.eqn[1]) \
@@ -164,8 +159,8 @@ class LineSegment:
              - line.eqn[1] * self.eqn[0]) \
             / (line.eqn[0] - self.eqn[0])
 
-        int_point = Point(x,y)
-        if int_point in points([self,line]):
+        int_point = Point(x, y)
+        if int_point in points([self, line]):
             int_point.intersection = Intersection.END_POINT
         else:
             int_point.intersection = Intersection.NORMAL
@@ -199,30 +194,10 @@ class BruteForce(_Algorithm):
                 if i != j:
                     point = self._lines[i].intersection(self._lines[j])
                     int_points.add(point)
-                    self._comparisons.append(
-                        {
-                            "index": (i,j),
-                            "point": point
-                        })
+                    self._comparisons.append({"index": (i, j), "point": point})
         self._int_points = list(int_points)
         return self._int_points
 
 
 if __name__ == "__main__":
-    pts = [Point(1,2), Point(3,7), Point(2,4)]
-    l1 = LineSegment(Point(3, 7), Point(2, 1))
-    l2 = LineSegment(Point(2, 2), Point(5, 5))
-    l3 = LineSegment(Point(3, 2), Point(4, 6))
-    l4 = LineSegment(Point(3, 7), Point(2, 2))
-    l5 = LineSegment(Point(1, 0), Point(2, 1))
-    brute = BruteForce([l1,l2,l3])
-    print(brute.run())
-    print(brute._comparisons)
-    status = BST(lambda x,y: x.upper.x - y.lower.x)
-    status.insert(l1)
-    status.insert(l2)
-    status.insert(l3)
-    status.insert(l4)
-    status.insert(l5)
-    status.delete(l2)
-    status.print()
+    print("--Run main.py--")
