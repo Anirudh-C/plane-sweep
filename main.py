@@ -41,4 +41,5 @@ if __name__ == "__main__":
         help="Path to input file containing a line segment in each line")
     parser.add_argument('--plane-sweep', action='store_true')
     args = parser.parse_args()
-    print(process(args.input, args.plane_sweep))
+    print("\n".join(
+        list(map(lambda x: str(x), process(args.input, args.plane_sweep)))))

@@ -99,6 +99,7 @@ class PlaneSweep(_Algorithm):
                 if self._check_int_event(l1, l2):
                     return -priority
                 return priority
+            return 0
 
         elif l2.eqn[0] == 0:
             # Sanity check
@@ -113,6 +114,7 @@ class PlaneSweep(_Algorithm):
                 if self._check_int_event(l1, l2):
                     return -priority
                 return priority
+            return 0
 
         # Compute intersections with sweep line
         int_point1 = (self._sweep - l1.eqn[1]) / l1.eqn[0]
