@@ -180,7 +180,7 @@ class PlaneSweep(_Algorithm):
             if int_point:
                 self._int_points.add(int_point)
                 self._status.insert(event[2])
-                if int_left.intersection == Intersection.NORMAL:
+                if int_point.intersection == Intersection.NORMAL:
                     self._status.insert(event[2])
                     self._events.insert(
                         (int_point, EventType.INTERSECTION, (left, right)))
