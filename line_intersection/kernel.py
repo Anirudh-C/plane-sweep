@@ -131,7 +131,7 @@ class LineSegment:
         """
         Check if :param: point is in line
         """
-        if point.y == self.eqn[0] * point.x + self.eqn[1]:
+        if abs(point.y - (self.eqn[0] * point.x + self.eqn[1])) < 1e-6:
             return self.lower.y <= point.y <= self.upper.y
         return False
 
@@ -272,6 +272,7 @@ class BruteForce(_Algorithm):
                             self.run()
                             self._num_lines = len(self._lines)
                         else:
+                            self.draw_base(SURF)
                             self.draw_points(SURF, self._int_points,
                                              PygameConfig.RED)
                     elif event.key == pygame.K_BACKSPACE:
@@ -307,9 +308,3 @@ class BruteForce(_Algorithm):
 
 if __name__ == "__main__":
     print("--Run main.py--")
-    l1 = LineSegment(Point(3, 3), Point(4, 7))
-    l2 = LineSegment(Point(8, 2), Point(2, 5))
-    l3 = LineSegment(Point(6, 2), Point(8, 8))
-    print(l1.intersection(l2))
-    print(l2.intersection(l3))
-    print(l3.intersection(l1))
