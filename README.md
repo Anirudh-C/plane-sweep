@@ -1,11 +1,11 @@
 # Line Intersection Project
 ## Setup
-In a working `python3` environment (preferrably virtualenv) run the setup script
+In a working `python3` environment (preferably virtualenv) run the setup script
 ```sh
 $ source setup.sh
 ```
 ## Testing and Running the program
-Create a text file with line segments, where each line segmnet is contained on a new line.
+Create a text file with line segments, where each line segment is contained on a new line.
 Look at `tests/test.txt` for an example.
 To run the plane sweep algorithm for line intersection run the following command
 ```sh
@@ -36,7 +36,7 @@ The interface works as follows:
 1. Alternatively, click the left and right buttons present at the bottom left of the screen to move backwards and
    forwards in execution
 2. Pressing `<ESC>` at any stage resets the progress in the algorithm and hence going back to the start
-### Quiting the visualisation interface
+### Quitting the visualisation interface
 Press `q` to quit the visualisation interface.
 ## Analysis
 I will update the required analysis before the next revision as well
