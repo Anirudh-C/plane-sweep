@@ -22,6 +22,7 @@ class PygameConfig:
     GRAY = (220, 220, 220)
     RED = (255, 85, 85)
     HIGHLIGHT = (255, 184, 108)
+    SWEEP = (189, 147, 249)
 
 
 class _Algorithm:
@@ -116,15 +117,10 @@ class _Algorithm:
         """
         Draw a list of points
         """
-        font = pygame.font.Font(pygame.font.get_default_font(), 12)
         for point in points:
             if point:
                 x, y = self.transform(point)
-                pygame.draw.circle(surface, colour, (x, y), 3)
-                text = font.render("({:.2f}, {:.2f})".format(point.x, point.y),
-                                   True, colour)
-                surface.blit(text, (x + 5, y - 5))
-        del font
+                pygame.draw.circle(surface, colour, (x, y), 5)
         return
 
     def draw_lines(self, surface, lines, colour=PygameConfig.BLACK):
@@ -136,8 +132,8 @@ class _Algorithm:
             pygame.draw.circle(surface, colour, self.transform(line.upper), 3)
             pygame.draw.circle(surface, colour, self.transform(line.lower), 3)
             # Draw anti-aliased line
-            pygame.draw.aaline(surface, colour, self.transform(line.upper),
-                               self.transform(line.lower))
+            pygame.draw.line(surface, colour, self.transform(line.upper),
+                             self.transform(line.lower), 3)
         return
 
     def draw_widgets(self, surface):
@@ -195,7 +191,7 @@ class _Algorithm:
             points.append(self.make_point(event.pos))
             pygame.draw.circle(surface, PygameConfig.BLACK,
                                self.transform(points[0]), 3)
-            return points, True
+            return points
         points.append(self.make_point(event.pos))
         line = kernel.LineSegment(points[0], points[1])
         self._lines.append(line)
@@ -204,7 +200,8 @@ class _Algorithm:
         pygame.draw.aaline(surface, PygameConfig.BLACK,
                            self.transform(line.upper),
                            self.transform(line.lower))
-        return [], False
+        self.draw_base(surface)
+        return []
 
     def visualize(self):
         """
@@ -505,7 +502,7 @@ class BST:
         elif root.balance == -2:
             if root.right.balance > 0:
                 root.right = self._right_rotate(root.right)
-                return self._right_rotate(root)
+                return self._left_rotate(root)
             return self._left_rotate(root)
         return root
 
@@ -598,14 +595,15 @@ class BST:
             print(node)
             self._print_helper(node.left, indent, 3)
             self._print_helper(node.right, indent, 2)
-        else:
-            print("Empty Tree!")
 
     def print(self):
         """
         Print BST
         """
-        self._print_helper(self.root, "", 1)
+        if self.root is None:
+            print("Empty tree!")
+        else:
+            self._print_helper(self.root, "", 1)
 
 
 if __name__ == "__main__":

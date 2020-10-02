@@ -10,12 +10,13 @@ def process_file(input_file: str, plane_sweep: bool = False):
     in the file :param: input_file
     """
     with open(input_file, 'r') as in_file:
-        raw = list(map(lambda x: x[:-1], in_file.readlines()))
+        raw = list(
+            map(lambda x: x[:-1] if "\n" in x else x, in_file.readlines()))
 
     points = list(
         map(
-            lambda x: (ast.literal_eval(x.split('-')[0]),
-                       ast.literal_eval(x.split('-')[1])), raw))
+            lambda x: (ast.literal_eval(x.split("--")[0]),
+                       ast.literal_eval(x.split("--")[1])), raw))
     lines = list(
         map(
             lambda x: LineSegment(Point(x[0][0], x[0][1]),
