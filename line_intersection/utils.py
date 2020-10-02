@@ -1,5 +1,9 @@
 from itertools import chain
 
+import line_intersection.kernel as kernel
+
+import pygame
+
 
 def points(lines: list) -> list:
     """
@@ -9,6 +13,17 @@ def points(lines: list) -> list:
         set(chain.from_iterable([[line.lower, line.upper] for line in lines])))
 
 
+class PygameConfig:
+    """
+    Config for pygame
+    """
+    WHITE = (248, 248, 242)
+    BLACK = (40, 42, 54)
+    GRAY = (220, 220, 220)
+    RED = (255, 85, 85)
+    HIGHLIGHT = (255, 184, 108)
+
+
 class _Algorithm:
     """
     Line Intersection algorithm representation
@@ -16,16 +31,180 @@ class _Algorithm:
     def __init__(self, lines: list):
         """
         :param: _lines
+        :param: _num_lines
         :param: _int_points
         :param: _comparisons
+        :param: _grid_size
         """
         self._lines = lines
+        self._num_lines = len(lines)
+        self._grid_size = 60
 
     def run(self):
         """
         Run the algorithm
         """
         pass
+
+    def draw_grid(self, surface):
+        """
+        Draw the cartesian plane and setup the mapping
+        for co-ordinates and pixels
+        """
+        surface.fill(PygameConfig.WHITE)
+        self.width, self.height = surface.get_width(), surface.get_height()
+
+        # Compute number of ticks
+        self.x_ticks = self.width // self._grid_size
+        self.y_ticks = self.height // self._grid_size
+
+        # Instantiate font
+        font = pygame.font.Font(pygame.font.get_default_font(), 12)
+
+        for i in range(0, self.width, self._grid_size):
+            pygame.draw.line(surface, PygameConfig.GRAY, (i, 0),
+                             (i, self.height))
+            # Draw x ticks
+            pygame.draw.line(surface, PygameConfig.BLACK,
+                             (i, self.height // 2 - 3),
+                             (i, self.height // 2 + 3))
+
+            # Define tick labels
+            text = font.render(
+                "{:d}".format(i // self._grid_size - self.x_ticks // 2), True,
+                PygameConfig.BLACK)
+
+            # Blit tick labels but change position of origin
+            if i // self._grid_size == self.x_ticks // 2:
+                surface.blit(text, (i + 3, self.height // 2 + 5))
+            else:
+                surface.blit(text, (i - 2, self.height // 2 + 5))
+
+        for i in range(0, self.height, self._grid_size):
+            pygame.draw.line(surface, PygameConfig.GRAY, (0, i),
+                             (self.width, i))
+            # Draw y ticks
+            pygame.draw.line(surface, PygameConfig.BLACK,
+                             (self.width // 2 - 3, i),
+                             (self.width // 2 + 3, i))
+
+            # Define tick labels
+            text = font.render(
+                "{:d}".format(self.y_ticks // 2 - i // self._grid_size), True,
+                PygameConfig.BLACK)
+
+            # Blit tick labels but don't blit origin
+            if i // self._grid_size != self.y_ticks // 2:
+                surface.blit(text, (self.width // 2 - 15, i - 5))
+
+        # Draw x and y axes
+        pygame.draw.line(surface, PygameConfig.BLACK, (self.width // 2, 0),
+                         (self.width // 2, self.height))
+        pygame.draw.line(surface, PygameConfig.BLACK, (0, self.height // 2),
+                         (self.width, self.height // 2))
+        del font
+
+    def transform(self, point) -> tuple:
+        """
+        Transform point into pixel co-ordinates
+        """
+        x = int(self.width // 2 + point.x * self._grid_size)
+        y = int(self.height // 2 - point.y * self._grid_size)
+        return x, y
+
+    def draw_points(self, surface, points, colour=PygameConfig.BLACK):
+        """
+        Draw a list of points
+        """
+        font = pygame.font.Font(pygame.font.get_default_font(), 12)
+        for point in points:
+            if point:
+                x, y = self.transform(point)
+                pygame.draw.circle(surface, colour, (x, y), 3)
+                text = font.render("({:.2f}, {:.2f})".format(point.x, point.y),
+                                   True, colour)
+                surface.blit(text, (x + 5, y - 5))
+        del font
+        return
+
+    def draw_lines(self, surface, lines, colour=PygameConfig.BLACK):
+        """
+        Draw a list of lines
+        """
+        for line in lines:
+            # Draw endpoints
+            pygame.draw.circle(surface, colour, self.transform(line.upper), 3)
+            pygame.draw.circle(surface, colour, self.transform(line.lower), 3)
+            # Draw anti-aliased line
+            pygame.draw.aaline(surface, colour, self.transform(line.upper),
+                               self.transform(line.lower))
+        return
+
+    def draw_widgets(self, surface):
+        """
+        Draw the forward and backward arrows
+        """
+        left = pygame.image.load("images/arrow.png")
+        left.convert()
+        left = pygame.transform.scale(left, (30, 30))
+        right = pygame.transform.flip(left, True, False)
+        surface.blit(left, (20, self.height - 50))
+        surface.blit(right, (70, self.height - 50))
+
+        add = pygame.image.load("images/add.jpg")
+        add.convert()
+        add = pygame.transform.scale(add, (30, 30))
+        surface.blit(add, (self.width - 50, self.height - 50))
+        return
+
+    def check_widget(self, pos):
+        """
+        Given a click position identify the widget
+        """
+        if self.height - 50 <= pos[1] <= self.height - 20:
+            if 20 <= pos[0] <= 50:
+                return "left"
+            elif 70 <= pos[0] <= 100:
+                return "right"
+            elif self.width - 50 <= pos[0] <= self.width - 20:
+                return "add"
+        return None
+
+    def draw_base(self, surface):
+        """
+        Basic screen to draw
+        """
+        self.draw_grid(surface)
+        self.draw_lines(surface, self._lines)
+        self.draw_widgets(surface)
+        return
+
+    def make_point(self, pos):
+        """
+        Given an x,y pixel position create a point
+        """
+        return kernel.Point(
+            round((pos[0] - self.width // 2) / self._grid_size),
+            round((self.height // 2 - pos[1]) / self._grid_size))
+
+    def handle_input(self, surface, event, points):
+        """
+        Handle the input event for line insertion
+        """
+        if len(points) == 0:
+            points.append(self.make_point(event.pos))
+            pygame.draw.circle(surface, PygameConfig.BLACK,
+                               self.transform(points[0]), 3)
+            return points, True
+        points.append(self.make_point(event.pos))
+        line = kernel.LineSegment(points[0], points[1])
+        self._lines.append(line)
+        pygame.draw.circle(surface, PygameConfig.BLACK,
+                           self.transform(points[1]), 3)
+        pygame.draw.aaline(surface, PygameConfig.BLACK,
+                           self.transform(line.upper),
+                           self.transform(line.lower))
+        return [], False
 
     def visualize(self):
         """

@@ -4,7 +4,7 @@ from line_intersection.kernel import Point, LineSegment, BruteForce
 from line_intersection.plane_sweep import PlaneSweep
 
 
-def process(input_file: str, plane_sweep: bool = False) -> list:
+def process_file(input_file: str, plane_sweep: bool = False):
     """
     Run brute force or plane sweep algorithm on the line segments defined
     in the file :param: input_file
@@ -25,7 +25,20 @@ def process(input_file: str, plane_sweep: bool = False) -> list:
         algorithm = PlaneSweep(lines)
     else:
         algorithm = BruteForce(lines)
-    return algorithm.run()
+    print("\n".join(list(map(str, algorithm.run()))))
+    algorithm.visualize()
+
+
+def process(plane_sweep: bool = False):
+    """
+    Run brute force or plane sweep algorithm on the line segments defined
+    via insertion in GUI
+    """
+    if plane_sweep:
+        algorithm = PlaneSweep([])
+    else:
+        algorithm = BruteForce([])
+    algorithm.visualize()
 
 
 if __name__ == "__main__":
@@ -37,9 +50,13 @@ if __name__ == "__main__":
     parser.add_argument(
         'input',
         metavar='path',
+        nargs="?",
+        default="",
         type=str,
         help="Path to input file containing a line segment in each line")
     parser.add_argument('--plane-sweep', action='store_true')
     args = parser.parse_args()
-    print("\n".join(
-        list(map(lambda x: str(x), process(args.input, args.plane_sweep)))))
+    if args.input:
+        process_file(args.input, args.plane_sweep)
+    else:
+        process(args.plane_sweep)
