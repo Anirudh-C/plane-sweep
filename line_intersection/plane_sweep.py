@@ -2,10 +2,11 @@ from queue import Queue
 import time
 from enum import Enum, auto
 
-from line_intersection.kernel import Point, Intersection, LineSegment, BST
-from line_intersection.utils import _Algorithm, PygameConfig
+from line_intersection.kernel import Point, LineSegment, BST
+from line_intersection.utils import _Algorithm, PygameConfig, Priority
 
 import pygame
+import numpy as np
 
 
 class EventType(Enum):
@@ -32,17 +33,17 @@ class PlaneSweep(_Algorithm):
         :param: _int_sweep
         """
         super().__init__(lines)
-        self._int_points = set()
-        self._comparisons = []
-        self._sweep = 0
-        self._int_sweep = (None, None)
         if self._lines:
             self._initialize()
 
-    def _initialize(self):
+    def _initialize(self) -> None:
         """
         Initialize all the relevant artefacts for plane sweep
         """
+        self._comparisons = []
+        self._int_points = set()
+        self._sweep = 0
+        self._current = None
         events = []
         for line in self._lines:
             events.append((line.upper, EventType.UPPER, line))
@@ -58,78 +59,55 @@ class PlaneSweep(_Algorithm):
         # Points at same y co-ordinate
         if p1[0].y == p2[0].y:
             # Order on x co-ordinate
-            return p1[0].x - p2[0].x
+            if p1[0].x < p2[0].x:
+                return Priority.MORE
+            elif p1[0].x > p2[0].x:
+                return Priority.LESS
+            return Priority.SAME_VAL
         elif p1[0].y < p2[0].y:
-            return -1
-        elif p1[0].y > p2[0].y:
-            return 1
-        return 0
+            return Priority.LESS
+        return Priority.MORE
 
-    def _check_int_event(self, l1: LineSegment, l2: LineSegment) -> bool:
+    def _sweep_intersection(self, line: LineSegment) -> Point:
         """
-        Sanity check to reverse priority when an intersection point
-        is an event point
+        Compute intersection point of :param: line and sweep line
         """
-        if self._int_sweep[0] and self._int_sweep[1]:
-            if self._int_sweep == (l1, l2):
-                return True
-            elif self._int_sweep == (l2, l1):
-                return True
-        return False
+        if line.eqn[0] == np.inf:
+            if line.upper.y == self._sweep:
+                return line.upper
+            elif line.lower.y == self._sweep:
+                return line.lower
+            return Point(line.lower.x, self._sweep)
+        int_x = round((self._sweep - line.eqn[1]) / line.eqn[0], 6)
+        return Point(int_x, self._sweep)
 
-    def _segment_priority(self, l1: LineSegment, l2: LineSegment) -> int:
+    def _segment_priority(self, l1: LineSegment, l2: LineSegment) -> Priority:
         """
         Priority function for line segments in status list
         """
         # If the same line segment is passed the priority is the same
         if l1 == l2:
-            return 0
-        # Check for horizontal lines
-        if l1.eqn[0] == 0 and l2.eqn[0] == 0:
-            return l1.lower.x - l2.lower.x
-
-        elif l1.eqn[0] == 0:
-            # Sanity check
-            if l1.eqn[1] == self._sweep:
-                int_point = (self._sweep - l2.eqn[1]) / l2.eqn[0]
-                if l1.lower.x <= int_point:
-                    priority = -1
+            return Priority.SAME_VAL
+        slopes = l1.eqn[0], l2.eqn[0]
+        # Only handle general case
+        if slopes[0] != 0 and slopes[1] != 0:
+            int_point1 = self._sweep_intersection(l1)
+            int_point2 = self._sweep_intersection(l2)
+            if int_point1.x < int_point2.x:
+                return Priority.LESS
+            elif int_point1.x > int_point2.x:
+                return Priority.MORE
+            else:
+                # l1 and l2 are intersecting at the sweep line
+                if l1.lower.x < l2.lower.x:
+                    return Priority.LESS
+                elif l1.lower.x > l2.lower.x:
+                    return Priority.MORE
                 else:
-                    priority = 1
-                if self._check_int_event(l1, l2):
-                    return -priority
-                return priority
-            return 0
+                    raise Exception("General point assumption failed!")
+        raise Exception("General point assumption failed!")
 
-        elif l2.eqn[0] == 0:
-            # Sanity check
-            if l2.eqn[1] == self._sweep:
-                int_point = (self._sweep - l1.eqn[1]) / l1.eqn[0]
-                if l2.lower.x <= int_point:
-                    priority = -1
-                else:
-                    priority = 1
-                # If we are at the intersection point event
-                # then reverse the priority
-                if self._check_int_event(l1, l2):
-                    return -priority
-                return priority
-            return 0
-
-        # Compute intersections with sweep line
-        int_point1 = (self._sweep - l1.eqn[1]) / l1.eqn[0]
-        int_point2 = (self._sweep - l2.eqn[1]) / l2.eqn[0]
-        if int_point1 <= int_point2:
-            priority = -1
-        else:
-            priority = 1
-        # If we are at the intersection point event
-        # then reverse the priority
-        if self._check_int_event(l1, l2):
-            return -priority
-        return priority
-
-    def _handle_upper_event(self, event):
+    def _handle_upper_event(self, event: tuple) -> None:
         """
         Handle event points that are upper endpoints of line segments
         """
@@ -139,14 +117,12 @@ class PlaneSweep(_Algorithm):
         if left:
             int_left = event[2].intersection(left)
             if int_left:
-                if int_left.intersection == Intersection.NORMAL and \
-                   int_left not in self._int_points:
-                    self._events.insert(
-                        (int_left, EventType.INTERSECTION, (event[2], left)))
+                self._events.insert(
+                    (int_left, EventType.INTERSECTION, (left, event[2])))
                 self._int_points.add(int_left)
             self._comparisons.append({
                 "index":
-                (self._lines.index(event[2]), self._lines.index(left)),
+                (self._lines.index(left), self._lines.index(event[2])),
                 "point":
                 int_left,
                 "sweep":
@@ -155,10 +131,8 @@ class PlaneSweep(_Algorithm):
         if right:
             int_right = event[2].intersection(right)
             if int_right:
-                if int_right.intersection == Intersection.NORMAL and \
-                   int_right not in self._int_points:
-                    self._events.insert(
-                        (int_right, EventType.INTERSECTION, (event[2], right)))
+                self._events.insert(
+                    (int_right, EventType.INTERSECTION, (event[2], right)))
                 self._int_points.add(int_right)
             self._comparisons.append({
                 "index":
@@ -178,64 +152,82 @@ class PlaneSweep(_Algorithm):
         })
         return
 
-    def _handle_lower_event(self, event):
+    def _handle_lower_event(self, event: tuple) -> None:
         """
         Handle event points that are lower endpoints of line segments
         """
         self._sweep = event[0].y
         left, right = self._status.neighbours(event[2])
-        if left and right:
+        self._status.delete(event[2])
+        if left and right and left != right:
             int_point = left.intersection(right)
             if int_point:
-                if int_point.intersection == Intersection.NORMAL and \
-                   int_point not in self._int_points:
-                    self._events.insert(
-                        (int_point, EventType.INTERSECTION, (left, right)))
+                self._events.insert(
+                    (int_point, EventType.INTERSECTION, (left, right)))
                 self._int_points.add(int_point)
             self._comparisons.append({
                 "index": (self._lines.index(left), self._lines.index(right)),
                 "point":
                 int_point,
                 "sweep":
-                self._sweep
+                event[0].y
             })
-        self._status.delete(event[2])
+        self._comparisons.append({
+            "index":
+            (self._lines.index(event[2]), self._lines.index(event[2])),
+            "point":
+            None,
+            "sweep":
+            event[0].y
+        })
         return
 
-    def _handle_intersection(self, event):
+    def _handle_intersection(self, event: tuple) -> None:
         """
         Handle event points that are intersection points
         """
+        # Swap the line segments
+        self._status.swap(event[2][0], event[2][1])
         self._sweep = event[0].y
-        # Swap the order of the intersecting line segments
-        self._status.delete(event[2][0])
-        self._status.delete(event[2][1])
-        self._int_sweep = event[2]
-        self._status.insert(event[2][0])
-        self._status.insert(event[2][1])
-        # Compute new neighbours and check intersection
-        neighbours = self._status.neighbours(event[2][0]), \
-            self._status.neighbours(event[2][1])
+
+        # Compute neighbours
+        left = [None] * 2
+        right = [None] * 2
         for i in range(2):
-            for line in neighbours[i]:
-                if line and line not in event[2]:
-                    int_point = event[2][i].intersection(line)
-                    if int_point:
-                        self._int_points.add(int_point)
-                        if int_point.intersection == Intersection.NORMAL and \
-                           int_point not in self._int_points:
-                            self._events.insert(
-                                (int_point, EventType.INTERSECTION,
-                                 (event[2][i], line)))
-                    self._comparisons.append({
-                        "index": (self._lines.index(event[2][i]),
-                                  self._lines.index(line)),
-                        "point":
-                        int_point,
-                        "sweep":
-                        self._sweep
-                    })
-        self._int_sweep = None, None
+            left[i], right[i] = self._status.neighbours(event[2][i])
+
+        # Compute intersections
+        for i in range(2):
+            if left[i]:
+                int_left = event[2][i].intersection(left[i])
+                if int_left:
+                    if int_left not in self._int_points:
+                        self._events.insert((int_left, EventType.INTERSECTION,
+                                             (left[i], event[2][i])))
+                        self._int_points.add(int_left)
+                self._comparisons.append({
+                    "index": (self._lines.index(event[2][i]),
+                              self._lines.index(left[i])),
+                    "point":
+                    int_left,
+                    "sweep":
+                    self._sweep
+                })
+            if right[i]:
+                int_right = event[2][i].intersection(right[i])
+                if int_right:
+                    if int_right not in self._int_points:
+                        self._events.insert((int_right, EventType.INTERSECTION,
+                                             (event[2][i], right[i])))
+                        self._int_points.add(int_right)
+                self._comparisons.append({
+                    "index": (self._lines.index(event[2][i]),
+                              self._lines.index(right[i])),
+                    "point":
+                    int_right,
+                    "sweep":
+                    self._sweep
+                })
         return
 
     def run(self) -> list:
@@ -244,6 +236,8 @@ class PlaneSweep(_Algorithm):
         """
         event = self._events.pop()
         while event is not None:
+            print(event)
+            self._current = event
             if event[1] == EventType.LOWER:
                 self._handle_lower_event(event)
             elif event[1] == EventType.UPPER:
@@ -352,6 +346,7 @@ class PlaneSweep(_Algorithm):
                         self.draw_base(SURF)
 
                     elif event.key == pygame.K_RETURN:
+                        insertion = False
                         if len(self._lines) > self._num_lines:
                             self._initialize()
                             self.run()

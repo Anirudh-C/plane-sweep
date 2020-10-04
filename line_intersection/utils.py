@@ -1,4 +1,5 @@
 from itertools import chain
+from enum import Enum, auto
 
 import line_intersection.kernel as kernel
 
@@ -23,6 +24,17 @@ class PygameConfig:
     RED = (255, 85, 85)
     HIGHLIGHT = (255, 184, 108)
     SWEEP = (189, 147, 249)
+
+
+class Priority(Enum):
+    """
+    Representation for priority
+    """
+    LESS = auto()
+    MORE = auto()
+    EQUAL = auto()
+    # When the elements are the same
+    SAME_VAL = auto()
 
 
 class _Algorithm:
@@ -180,8 +192,8 @@ class _Algorithm:
         Given an x,y pixel position create a point
         """
         return kernel.Point(
-            round((pos[0] - self.width // 2) / self._grid_size),
-            round((self.height // 2 - pos[1]) / self._grid_size))
+            round((pos[0] - self.width // 2) / self._grid_size, 2),
+            round((self.height // 2 - pos[1]) / self._grid_size, 2))
 
     def handle_input(self, surface, event, points):
         """
@@ -309,11 +321,12 @@ class BST:
         if not root:
             return Node(value)
 
-        if self._priority(value, root.value) < 0:
+        if self._priority(value,
+                          root.value) in [Priority.LESS, Priority.EQUAL]:
             left = self._insert(root.left, value)
             root.left = left
             left.parent = root
-        elif self._priority(value, root.value) > 0:
+        elif self._priority(value, root.value) == Priority.MORE:
             right = self._insert(root.right, value)
             root.right = right
             right.parent = root
@@ -338,10 +351,11 @@ class BST:
         if not root:
             return root
 
-        elif self._priority(value, root.value) < 0:
+        elif self._priority(value,
+                            root.value) in [Priority.LESS, Priority.EQUAL]:
             root.left = self._delete(root.left, value)
 
-        elif self._priority(value, root.value) > 0:
+        elif self._priority(value, root.value) == Priority.MORE:
             root.right = self._delete(root.right, value)
 
         else:
@@ -417,6 +431,14 @@ class BST:
         self.delete(max_node.value)
         return max_node.value
 
+    def swap(self, value1, value2):
+        """
+        Swap :param: value1 and :param: value2 in the tree
+        """
+        node1 = self._search(self.root, value1)
+        node2 = self._search(self.root, value2)
+        node1.value, node2.value = node2.value, node1.value
+
     def _predecessor(self, value) -> Node:
         """
         Find the predecessor of the node with :param: value
@@ -481,11 +503,11 @@ class BST:
         """
         if root is None:
             return
-        if self._priority(value, root.value) < 0:
+        if self._priority(value, root.value) == Priority.LESS:
             return self._search(root.left, value)
-        elif self._priority(value, root.value) > 0:
+        elif self._priority(value, root.value) == Priority.MORE:
             return self._search(root.right, value)
-        elif self._priority(value, root.value) == 0:
+        elif self._priority(value, root.value) == Priority.SAME_VAL:
             return root
         print("{} not in tree!".format(str(value)))
         return
@@ -574,6 +596,23 @@ class BST:
         for val in values:
             root.insert(val)
         return root
+
+    def _leaves(self, root: Node) -> list:
+        """
+        Compute leaves in tree rooted at :param: root
+        """
+        leaves = []
+        if root:
+            leaves += self._leaves(root.left)
+            leaves.append(root.value)
+            leaves += self._leaves(root.right)
+        return leaves
+
+    def leaves(self) -> list:
+        """
+        Compute leaves of tree
+        """
+        return self._leaves(self.root)
 
     def _print_helper(self, node: Node, indent: str, loc: int):
         """

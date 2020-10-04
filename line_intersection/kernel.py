@@ -157,10 +157,10 @@ class LineSegment:
         """
         # Check if line segments are overlapping
         if self.eqn == line.eqn:
-            if line.upper in self:
-                return Point(line.upper.x, line.upper.y, Intersection.OVERLAP)
             if line.lower in self:
                 return Point(line.lower.x, line.lower.y, Intersection.OVERLAP)
+            if line.upper in self:
+                return Point(line.upper.x, line.upper.y, Intersection.OVERLAP)
 
         # Check for horizontal lines
         if self.eqn[0] == line.eqn[0]:
@@ -370,9 +370,10 @@ class BruteForce(_Algorithm):
 
                 elif event.type == pygame.MOUSEMOTION and insertion:
                     mouse_position = pygame.mouse.get_pos()
-                    SURF.blit(insertion_text, (30, 30))
+
                     if len(points) > 0:
                         self.draw_base(SURF)
+                        SURF.blit(insertion_text, (30, 30))
                         pygame.draw.line(SURF, PygameConfig.BLACK,
                                          self.transform(points[0]),
                                          mouse_position, 2)
@@ -382,3 +383,6 @@ class BruteForce(_Algorithm):
 
 if __name__ == "__main__":
     print("--Run main.py--")
+    l1 = LineSegment(Point(-9, -2), Point(2, 6))
+    l2 = LineSegment(Point(-7, 1), Point(3, 2))
+    print(l1.intersection(l2))
