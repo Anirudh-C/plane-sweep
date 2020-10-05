@@ -1,0 +1,27 @@
+#+TITLE: Project Report: Plane Sweep Line Intersection
+#+SUBTITLE: CS 715 Computational Geometry
+#+AUTHOR: Anirudh C @@latex:\\@@ IMT2017006
+#+OPTIONS: toc:nil num:nil date:nil
+#+LATEX_HEADER: \usepackage{parskip}
+#+LATEX_HEADER: \usepackage[dvipsnames,x11names]{xcolor} \hypersetup{colorlinks=true,urlcolor=blue,citecolor=darkgray,linkcolor=Firebrick4}
+All the code for this project is available at https://github.com/anirudh-c/plane-sweep
+* Comparing Brute-Force and Plane Sweep Algorithms
+The program keeps track of every comparison made while computing the line intersection. In the brute
+force algorithm, every pair of line segments is compared. On the other hand for the plane sweep
+algorithm, at each /event point/ $\mathcal{O}(1)$ line segments are compared, that is, only the
+neighbours of specific line segments. Obtaining these neighbours takes $\mathcal{O}(\log{n})$ time.
+
+To illustrate this, the program visualises each comparison performed in the algorithm via the GUI. I
+have provided a few instances of the visualisations of comparisons between line segments in the
+=casts/= folder.
+
+The usage and details of the graphic interface are available at the repository link provided above and
+also in the README.
+* Implementation Details
+I use an AVL tree implementation for representing the event and status lists for the plane sweep
+algorithm. The same base class ~BST~ can be used for both by just providing alternate priority functions
+that define how two points (events) or line segments (status list) can be ordered.
+
+Also, the brute force and plane sweep algorithms are inherited from the same class ~_Algorithm~ which
+can be extended for any line segment intersection algorithm.
+

@@ -38,5 +38,3 @@ The interface works as follows:
 2. Pressing `<ESC>` at any stage resets the progress in the algorithm and hence going back to the start
 ### Quitting the visualisation interface
 Press `q` to quit the visualisation interface.
-## Analysis
-I will update the required analysis before the next revision as well
