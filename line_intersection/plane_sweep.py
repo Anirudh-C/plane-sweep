@@ -236,7 +236,6 @@ class PlaneSweep(_Algorithm):
         """
         event = self._events.pop()
         while event is not None:
-            print(event)
             self._current = event
             if event[1] == EventType.LOWER:
                 self._handle_lower_event(event)
